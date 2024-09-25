@@ -1,0 +1,58 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+    ports:
+      - "3307:3306"
+
+  website:
+    build: .
+    command: bash -c "bundle exec rails db:migrate && bundle exec rails s -b '0.0.0.0' -p 3000"
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      RAILS_ENV: ${RAILS_ENV}
+      REDIS_URL: ${REDIS_URL}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  sidekiq:
+    build: .
+    command: bundle exec sidekiq
+    volumes:
+      - .:/app
+    environment:
+      REDIS_URL: ${REDIS_URL}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  redis:
+    image: redis:6.0
+    command: redis-server
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+
+networks:
+  app-network:
